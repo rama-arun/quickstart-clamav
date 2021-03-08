@@ -1,0 +1,72 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: 'AWS::Serverless-2016-10-31'
+Description: An AWS Lambda application to keep your S3 buckets safe from viruses using ClamAV Open Source software
+Metadata:
+  LICENSE: Apache License, Version 2.0
+  'AWS::CloudFormation::Interface':
+    ParameterLabels:
+      SubscriptionEmail:
+        default: Email Address
+      PreferredAction:
+        default: Preferred Action
+
+Parameters:
+    SubscriptionEmail:
+      Type: String
+      Description: Provide a single Email address or a DL to get notified when malware is detected
+      Default: user@example.com
+    PreferredAction:
+      Type: String
+      AllowedValues:
+        - 'Delete'
+        - 'Tag'
+      Description: Do you want to delete the infected file or just tag it?
+Resources:
+  FindingsTopic:
+    Type: 'AWS::SNS::Topic'
+    Properties: 
+      TopicName: "MalwareNotificationTopic"
+      Subscription:
+        - Endpoint: 
+            Ref: SubscriptionEmail
+          Protocol: email
+  bucket:
+    Type: AWS::S3::Bucket
+    DeletionPolicy: Retain
+  virusscannerfn:
+    Type: AWS::Serverless::Function
+    Properties:
+      PackageType: Image
+      Description: Call the AWS Lambda API
+      Timeout: 300
+      MemorySize: 2048
+      # Function's execution role
+      Policies:
+        - AWSLambdaBasicExecutionRole
+        - AWSLambdaReadOnlyAccess
+        - AWSXrayWriteOnlyAccess
+        - AmazonS3FullAccess
+        - AmazonSNSFullAccess
+      Tracing: Active
+      Environment:
+        Variables:
+          snsTopic: 
+            Ref: FindingsTopic
+          preferredAction:
+            Ref: PreferredAction
+      Events:
+        s3Notification:
+          Type: S3
+          Properties:
+            Bucket: 
+              Ref: bucket
+            Events: s3:ObjectCreated:*
+            Filter:
+              S3Key:
+                Rules:
+                - Name: prefix
+                  Value: inbound/
+    Metadata:
+      DockerTag: virus-scanner
+      DockerContext: .
+      Dockerfile: Dockerfile

@@ -1,0 +1,11 @@
+version = 0.1
+[default]
+[default.deploy]
+[default.deploy.parameters]
+stack_name = "virus-scanner-fn"
+s3_bucket = "aws-sam-cli-managed-default-samclisourcebucket-1xo7wwc2h4gv2"
+s3_prefix = "virus-scanner-fn"
+region = "us-east-1"
+confirm_changeset = true
+capabilities = "CAPABILITY_IAM"
+image_repositories = ["virusscannerfn=934043277795.dkr.ecr.us-east-1.amazonaws.com/ga-dhs"]
