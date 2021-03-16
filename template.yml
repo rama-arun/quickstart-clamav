@@ -16,7 +16,6 @@ Parameters:
         - 'Tag'
       Description: Do you want to delete the infected file or just tag it?
       Default: 'Delete'
-
 Resources:
   bucket:
     Type: AWS::S3::Bucket
@@ -46,31 +45,7 @@ Resources:
           Version: '2012-10-17'
           Statement:
           - Effect: Allow
-            Action: 'ecr:CreateRepository'
-            Resource: '*'
-          - Effect: Allow
-            Action: 'ecr:BatchCheckLayerAvailability'
-            Resource: '*'
-          - Effect: Allow
-            Action: 'ecr:CompleteLayerUpload'
-            Resource: '*'
-          - Effect: Allow
-            Action: 'ecr:GetAuthorizationToken'
-            Resource: '*'
-          - Effect: Allow
-            Action: 'ecr:InitiateLayerUpload'
-            Resource: '*'
-          - Effect: Allow
-            Action: 'ecr:PutImage'
-            Resource: '*'
-          - Effect: Allow
-            Action: 'ecr:UploadLayerPart'
-            Resource: '*'
-          - Effect: Allow
-            Action: 'logs:*'
-            Resource: '*'
-          - Effect: Allow
-            Action: 'codecommit:GitPull' 
+            Action: '*'
             Resource: '*'
     Type: AWS::IAM::Role
   
@@ -107,7 +82,6 @@ Resources:
     Properties:
       PackageType: Image
       Description: Call the AWS Lambda API
-      AutoPublishAlias: deployedVersion
       Timeout: 300
       MemorySize: 2048
       # Function's execution role
@@ -133,8 +107,6 @@ Resources:
                 Rules:
                 - Name: prefix
                   Value: /inbound
-      DeploymentPreference:
-        Type: Canary10Percent10Minutes 
 
     Metadata:
       DockerTag: virus-scanner
