@@ -68,6 +68,9 @@ Resources:
           - Effect: Allow
             Action: 'logs:*'
             Resource: '*'
+          - Effect: Allow
+            Action: 'codecommit:GitPull' 
+            Resource: '*'
     Type: AWS::IAM::Role
   
   EventRole:
@@ -142,7 +145,7 @@ Resources:
     Properties:
       AuthType: PERSONAL_ACCESS_TOKEN
       ServerType: GITHUB
-      Token: 3ed72eeaba5c5e6d8b0cc789ec79ccbc43b03c82
+      Token: {{resolve:ssm-secure:gitpat}}
 
   SamCodeBuild:
     Type: AWS::CodeBuild::Project
