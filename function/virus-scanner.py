@@ -12,7 +12,7 @@ def lambda_handler(event, context):
     for record in event['Records']:
         bucket = record['s3']['bucket']['name']
         key = record['s3']['object']['key']
-        version = record['s3']['object']['versionId']
+        # version = record['s3']['object']['versionId']
         file_name = '/tmp/' + key.split('/')[-1]
 
         s3_client.download_file(bucket, key, file_name)
