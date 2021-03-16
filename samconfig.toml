@@ -9,3 +9,4 @@ region = "us-east-1"
 confirm_changeset = true
 capabilities = "CAPABILITY_IAM"
 image_repositories = ["virusscannerfn=934043277795.dkr.ecr.us-east-1.amazonaws.com/ga-dhs"]
+parameter_overrides = "PreferredAction=\"Delete\""

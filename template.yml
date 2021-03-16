@@ -5,39 +5,105 @@ Metadata:
   LICENSE: Apache License, Version 2.0
   'AWS::CloudFormation::Interface':
     ParameterLabels:
-      SubscriptionEmail:
-        default: Email Address
       PreferredAction:
         default: Preferred Action
 
 Parameters:
-    SubscriptionEmail:
-      Type: String
-      Description: Provide a single Email address or a DL to get notified when malware is detected
-      Default: user@example.com
     PreferredAction:
       Type: String
       AllowedValues:
         - 'Delete'
         - 'Tag'
       Description: Do you want to delete the infected file or just tag it?
+
 Resources:
-  FindingsTopic:
-    Type: 'AWS::SNS::Topic'
-    Properties: 
-      TopicName: "MalwareNotificationTopic"
-      Subscription:
-        - Endpoint: 
-            Ref: SubscriptionEmail
-          Protocol: email
   bucket:
     Type: AWS::S3::Bucket
     DeletionPolicy: Retain
+  
+  BuildArtifacts:
+    Type: AWS::S3::Bucket
+    DeletionPolicy: Retain
+
+  CodeBuildRole:
+    Description: Creating service role in IAM for AWS CodeBuild
+    Properties:
+      AssumeRolePolicyDocument:
+        Statement:
+        - Action: sts:AssumeRole
+          Effect: Allow
+          Principal:
+            Service: codebuild.amazonaws.com
+      Path: /
+      RoleName: !Join
+        - '-'
+        - - !Ref 'AWS::StackName'
+          - CodeBuild
+      Policies:
+      - PolicyName: BuildsDockerImages
+        PolicyDocument:
+          Version: '2012-10-17'
+          Statement:
+          - Effect: Allow
+            Action: 'ecr:CreateRepository'
+            Resource: '*'
+          - Effect: Allow
+            Action: 'ecr:BatchCheckLayerAvailability'
+            Resource: '*'
+          - Effect: Allow
+            Action: 'ecr:CompleteLayerUpload'
+            Resource: '*'
+          - Effect: Allow
+            Action: 'ecr:GetAuthorizationToken'
+            Resource: '*'
+          - Effect: Allow
+            Action: 'ecr:InitiateLayerUpload'
+            Resource: '*'
+          - Effect: Allow
+            Action: 'ecr:PutImage'
+            Resource: '*'
+          - Effect: Allow
+            Action: 'ecr:UploadLayerPart'
+            Resource: '*'
+          - Effect: Allow
+            Action: 'logs:*'
+            Resource: '*'
+    Type: AWS::IAM::Role
+  
+  EventRole:
+    Description: IAM role to allow Amazon CloudWatch Events to trigger AWS CodeBuild build
+    Properties:
+      AssumeRolePolicyDocument:
+        Statement:
+        - Action: sts:AssumeRole
+          Effect: Allow
+          Principal:
+            Service:
+            - events.amazonaws.com
+          Sid: 1
+      Policies:
+      - PolicyDocument:
+          Statement:
+          - Action:
+            - codebuild:StartBuild
+            Effect: Allow
+            Resource: !GetAtt 'SamCodeBuild.Arn'
+        PolicyName: !Join
+          - '-'
+          - - !Ref 'AWS::StackName'
+            - CloudWatchEventPolicy
+      RoleName: !Join
+        - '-'
+        - - !Ref 'AWS::StackName'
+          - CloudWatchEventRule
+    Type: AWS::IAM::Role
+
   virusscannerfn:
     Type: AWS::Serverless::Function
     Properties:
       PackageType: Image
       Description: Call the AWS Lambda API
+      AutoPublishAlias: deployedVersion
       Timeout: 300
       MemorySize: 2048
       # Function's execution role
@@ -46,12 +112,9 @@ Resources:
         - AWSLambdaReadOnlyAccess
         - AWSXrayWriteOnlyAccess
         - AmazonS3FullAccess
-        - AmazonSNSFullAccess
       Tracing: Active
       Environment:
         Variables:
-          snsTopic: 
-            Ref: FindingsTopic
           preferredAction:
             Ref: PreferredAction
       Events:
@@ -60,13 +123,88 @@ Resources:
           Properties:
             Bucket: 
               Ref: bucket
-            Events: s3:ObjectCreated:*
+            Events: s3:ObjectCreated:Put
             Filter:
               S3Key:
                 Rules:
                 - Name: prefix
-                  Value: inbound/
+                  Value: /inbound
+      DeploymentPreference:
+        Type: Canary10Percent10Minutes 
+
     Metadata:
       DockerTag: virus-scanner
       DockerContext: .
       Dockerfile: Dockerfile
+  
+  CodeBuildSourceCredential:
+    Type: AWS::CodeBuild::SourceCredential
+    Properties:
+      AuthType: PERSONAL_ACCESS_TOKEN
+      ServerType: GITHUB
+      Token: 3ed72eeaba5c5e6d8b0cc789ec79ccbc43b03c82
+
+  SamCodeBuild:
+    Type: AWS::CodeBuild::Project
+    Properties:
+      Name: ClamAV-CodeBuild-Project
+      Description: Build process for a ClamAV Application deployed using AWS SAM
+      ServiceRole: !GetAtt CodeBuildRole.Arn
+      Artifacts:
+        Type: S3
+        Location: !GetAtt BuildArtifacts.Arn
+        Name: code-build-artifacts
+        Path: ''
+        NamespaceType: NONE
+        Packaging: NONE
+      Environment:
+        Type: LINUX_CONTAINER
+        ComputeType: BUILD_GENERAL1_SMALL
+        Image: aws/codebuild/amazonlinux2-x86_64-standard:2.0
+        PrivilegedMode: true
+        EnvironmentVariables:
+          - Name: AWS_REGION
+            Value: !Ref "AWS::Region"
+          - Name: ACCOUNT_ID
+            Value: !Ref "AWS::AccountId"
+          - Name: STACK_NAME
+            Value: !Ref AWS::StackName
+          - Name: S3_BUCKET
+            Value: !Ref BuildArtifacts
+      Source:
+        Auth:
+          Resource: !Ref CodeBuildSourceCredential
+          Type: OAUTH
+        Location: https://github.com/juluriaj/quickstart-clamav.git
+        Type: GITHUB
+        GitCloneDepth: 1
+      Triggers:
+        Webhook: true
+        FilterGroups:
+          - - Type: EVENT
+              Pattern: PUSH
+              ExcludeMatchedPattern: false
+      BadgeEnabled: false
+      LogsConfig:
+        CloudWatchLogs: 
+          Status: ENABLED
+        S3Logs:
+          Status: DISABLED
+          EncryptionDisabled: false
+      TimeoutInMinutes: 10
+
+  NightlyEvent:
+    Type: AWS::Events::Rule
+    Properties:
+      Description: Rule for Amazon CloudWatch Events to trigger a build every night
+      ScheduleExpression: "cron(0 0 * * ? *)"
+      Name: !Join
+      - '-'
+      - - !Ref 'AWS::StackName'
+        - NightlyBuild
+      State: ENABLED
+      Targets:
+      - Arn: !GetAtt 'SamCodeBuild.Arn'
+        Id: NightlyCheck
+        RoleArn: !GetAtt 'EventRole.Arn'
+        Input: '{"buildspecOverride":"buildspec.yml"}'

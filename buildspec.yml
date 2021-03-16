@@ -3,28 +3,23 @@ version: 0.2
 phases:
   install:
     runtime-versions:
-      java: corretto11
+      python: 3.8
     commands:
       # Upgrade AWS CLI and AWS SAM CLI to the latest version
       - pip install --upgrade --user awscli
       - pip install --upgrade aws-sam-cli
 
   pre_build:
+    on-failure: CONTINUE
     commands:
       - echo Test started on `date`
-      - mvn clean -q
       - aws ecr get-login-password --region $AWS_REGION | docker login --username AWS --password-stdin $ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com
   build:
     commands:
       - echo Build started on `date`
-      - mvn compile dependency:copy-dependencies -DincludeScope=runtime -q
-      # - docker build -t thumbnailer:latest .
-      # - docker tag thumbnailer:latest $ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/thumbnailer:latest
-      # - docker push $ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/thumbnailer:latest
       - sam build 
-      - sam package --output-template-file template-export.yml --image-repository $ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/thumbnailer-app --s3-bucket $S3_BUCKET
-      # - sam deploy --template-file template-export.yml --stack-name aws-thumbnailer-infrastructure --image-repository $ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/thumbnailer-app --s3-bucket $S3_BUCKET --capabilities CAPABILITY_IAM
-      #- aws cloudformation package --template template.yml --s3-bucket $S3_BUCKET --output-template template-export.yml
+      - sam package --output-template-file template-export.yml --image-repository $ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/ga-dhs --s3-bucket $S3_BUCKET
+      - sam deploy --template-file template-export.yml --stack-name $STACK_NAME --image-repository $ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/ga-dhs --s3-bucket $S3_BUCKET --capabilities CAPABILITY_IAM
   post_build:
     commands:
       # Do not remove this statement. This command is required for AWS CodeStar projects.

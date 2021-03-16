@@ -6,19 +6,22 @@ RUN python -m pip install --upgrade pip
 
 RUN yum install amazon-linux-extras -y
 
-# why the hell following is not working? AWS Bug!! Python3 doesn't recognize this package. https://forums.aws.amazon.com/thread.jspa?messageID=930259
+# Python3 doesn't recognize this package yet. https://forums.aws.amazon.com/thread.jspa?messageID=930259
 RUN PYTHON=python2 amazon-linux-extras install epel -y
 
 RUN yum install -y gcc gcc-c++ clamav clamd clamav-update 
 
-RUN freshclam
-    
-COPY *.py ${LAMBDA_TASK_ROOT}/
+COPY function/virus-scanner.py ${LAMBDA_TASK_ROOT}/
 
 COPY ./requirements.txt ${LAMBDA_TASK_ROOT}/requirements.txt
 
 RUN cd ${LAMBDA_TASK_ROOT}
 
 RUN pip install -r ${LAMBDA_TASK_ROOT}/requirements.txt -t .
+
+# Force running freshclam everytime the image is being built, so new antivirus definitions are downloaded
+ARG CACHEBUST=1
+
+RUN freshclam
 
 CMD [ "virus-scanner.lambda_handler" ]
