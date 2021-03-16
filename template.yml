@@ -145,7 +145,7 @@ Resources:
     Properties:
       AuthType: PERSONAL_ACCESS_TOKEN
       ServerType: GITHUB
-      Token: {{resolve:ssm-secure:gitpat}}
+      Token: '{{resolve:secretsmanager:github:gitsecret:gitpat}}'
 
   SamCodeBuild:
     Type: AWS::CodeBuild::Project
