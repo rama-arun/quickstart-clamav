@@ -106,7 +106,7 @@ Resources:
               S3Key:
                 Rules:
                 - Name: prefix
-                  Value: /inbound
+                  Value: inbound/
 
     Metadata:
       DockerTag: virus-scanner
