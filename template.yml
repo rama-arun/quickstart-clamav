@@ -118,7 +118,7 @@ Resources:
     Properties:
       AuthType: PERSONAL_ACCESS_TOKEN
       ServerType: GITHUB
-      Token: '{{resolve:secretsmanager:gitsecret:SecretString:gitpat}}'
+      Token: '{{resolve:secretsmanager:<<INSERT SECRET NAME HERE>>:SecretString:<<INSERT SECRET KEY HERE>>}}'
 
   SamCodeBuild:
     Type: AWS::CodeBuild::Project
@@ -151,7 +151,7 @@ Resources:
         Auth:
           Resource: !Ref CodeBuildSourceCredential
           Type: OAUTH
-        Location: https://github.com/juluriaj/quickstart-clamav.git
+        Location: https://github.com/<<INSERT GITHUB USERNAME HERE>>/quickstart-clamav.git
         Type: GITHUB
         GitCloneDepth: 1
       Triggers:
