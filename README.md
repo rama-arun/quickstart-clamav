@@ -1,13 +1,8 @@
-# Project README
-## Pre-requisites
-1. Create a new image repository using AWS console or CLI with command
-    `aws ecr create-repository --repository-name $IMAGE_REPO_NAME--image-tag-mutability IMMUTABLE--image-scanning-configuration scanOnPush=true`
-2. Clone this repository
-3. Update the image repository name in buildspec.yml at both line 21 and 22
-4. Create your personal access token from [github](https://docs.github.com/en/github/authenticating-to-github/creating-a-personal-access-token) 
-5. Store your token in AWS SecretsManager and save the secret name and key
-6. Replace the secretname and key name at line 148 in template.yml
-7. After the stack is deployed, add VPC, subnet and securitygroup for your codebuild project so build instance can reach internet to download packages
+# README
+
+## Architecture Diagram
+
+![Architecture Diagram!](/QuickStart-ClamAV.png "Quick Start ClamAV")
 
 ## Runtime Architecture Flow
 1. New objects are placed in S3 bucket in designated folder
@@ -21,6 +16,24 @@
 - **C.** CodeBuild build project packages the application into updated container image and uploads to ECR
 - **D.** CodeBuild build project updates the lambda function to use latest image
 - **E.** Timer Event runs every 24 hours and triggers the build. Build process will update the container image with latest virus definitions, publishes to ECR and updates the lambda function
+
+## Pre-requisites
+1. Install [AWS CLI](https://docs.aws.amazon.com/cli/latest/userguide/install-cliv2.html) & [AWS SAM CLI](https://docs.aws.amazon.com/serverless-application-model/latest/developerguide/serverless-sam-cli-install.html)
+1. Configure [AWS CLI](https://docs.aws.amazon.com/cli/latest/userguide/cli-chap-configure.html)
+1. Create a new image repository using AWS console or CLI with command
+    `aws ecr create-repository --repository-name <<IMAGE_REPO_NAME>> --image-tag-mutability IMMUTABLE--image-scanning-configuration scanOnPush=true`
+
+## How to deploy the solution
+1. Clone this repository
+1. Update the image repository name created above in buildspec.yml at both line 21 and 22
+1. Configure CodeBuild to access your [source provider](https://docs.aws.amazon.com/codebuild/latest/userguide/access-tokens.html)
+1. Create your personal access token from [github](https://docs.github.com/en/github/authenticating-to-github/creating-a-personal-access-token) 
+1. Store your token in AWS SecretsManager and note the secret name and key
+1. Replace the secretname and key at line 148 in template.yml
+1. Run `sam build` from the project home folder
+1. Run `sam deploy -g --capabilities CAPABILITY_NAMED_IAM` and answer the questions. Note: You need URL of the image repository you created in pre-requisites. e.g., `ACCOUNT_ID`.dkr.ecr.`AWS_REGION`.amazonaws.com/`REPO_NAME`
+1. Note that this solution deletes the infected files by default. If you want to just tag the file without deleting, ensure to enter _Tag_ as value for _PreferredAction_ parameter
+1. After the stack is deployed, go to [AWS CodeBuild Console](https://console.aws.amazon.com/codesuite/codebuild/projects), open code build project and add VPC as per [instructions here](https://docs.aws.amazon.com/codebuild/latest/userguide/vpc-support.html)
 
 ## TODO:
 1. Make this solution work with one or more existing bucket(s)
