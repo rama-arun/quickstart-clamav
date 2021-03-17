@@ -26,10 +26,10 @@
 ## How to deploy the solution
 1. Clone this repository
 1. Update the image repository name created above in buildspec.yml at both line 21 and 22
-1. Configure CodeBuild to access your [source provider](https://docs.aws.amazon.com/codebuild/latest/userguide/access-tokens.html)
 1. Create your personal access token from [github](https://docs.github.com/en/github/authenticating-to-github/creating-a-personal-access-token) 
+    1. Learn more about configuring CodeBuild to access your source provider by [clicking here](https://docs.aws.amazon.com/codebuild/latest/userguide/access-tokens.html)
 1. Store your token in AWS SecretsManager and note the secret name and key
-1. Replace the secretname and key at line 148 in template.yml
+1. Replace the secretname and key at line 121 in template.yml
 1. Run `sam build` from the project home folder
 1. Run `sam deploy -g --capabilities CAPABILITY_NAMED_IAM` and answer the questions. Note: You need URL of the image repository you created in pre-requisites. e.g., `ACCOUNT_ID`.dkr.ecr.`AWS_REGION`.amazonaws.com/`REPO_NAME`
 1. Note that this solution deletes the infected files by default. If you want to just tag the file without deleting, ensure to enter _Tag_ as value for _PreferredAction_ parameter
